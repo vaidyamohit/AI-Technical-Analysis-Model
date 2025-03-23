@@ -35,22 +35,17 @@ def page2():
     stock_api_obj = StockAPI("1UJ6ACYM0P4MHORZ")
     ai_insights_obj = AIInsights("AIzaSyAVi1v80vt41mTjZED6BaMs5-74HKFkSk0")
 
-    # Display chat history
-    for message in st.session_state.chat_history:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+    # Display question options
+    st.subheader("Ask about the stock:")
+    question = st.selectbox("Choose a question:", [
+        "What is the current price?",
+        "Show me the latest trends.",
+        "Provide AI insights.",
+        "Is the stock bullish or bearish?"
+    ])
 
-    # Chat input
-    user_input = st.chat_input("Ask about the stock...")
-
-    if user_input:
-        # Display user message
-        st.session_state.chat_history.append({"role": "user", "content": user_input})
-        with st.chat_message("user"):
-            st.markdown(user_input)
-
-        # Process query
-        if "price" in user_input.lower():
+    if st.button("Ask"):
+        if question == "What is the current price?":
             market_data = stock_api_obj.get_stock_info(st.session_state.ticker, st.session_state.market)
             try:
                 latest_date = list(market_data['Time Series (Daily)'].keys())[0]
@@ -58,15 +53,20 @@ def page2():
                 bot_reply = f"The latest closing price of {st.session_state.ticker} is ₹{latest_price}."
             except KeyError:
                 bot_reply = "I am unable to fetch the stock price right now."
-        else:
+
+        elif question == "Show me the latest trends.":
+            bot_reply = "Fetching the latest trends... (Feature in progress)"
+
+        elif question == "Provide AI insights.":
             response = ai_insights_obj.get_ai_insights(st.session_state.image_path, st.session_state.ticker, st.session_state.market)
             bot_reply = response.candidates[0].content.parts[0].text if response.candidates else "I couldn't generate an insight."
 
-        # Display bot reply
-        with st.chat_message("assistant"):
-            st.markdown(bot_reply)
+        elif question == "Is the stock bullish or bearish?":
+            bot_reply = "Analyzing the market sentiment... (Feature in progress)"
 
-        st.session_state.chat_history.append({"role": "assistant", "content": bot_reply})
+        # Display bot reply
+        st.subheader("Answer:")
+        st.write(bot_reply)
 
     if st.button("Back"):
         st.session_state.page = "page1"
@@ -77,3 +77,5 @@ if st.session_state.page == "page1":
     page1()
 elif st.session_state.page == "page2":
     page2()
+
+    
