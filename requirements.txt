@@ -7,3 +7,5 @@ streamlit
 google-generativeai 
 alpha_vantage       
 Pillow
+openai
+anthropic
