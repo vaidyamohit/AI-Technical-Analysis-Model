@@ -59,7 +59,7 @@ def page2():
             try:
                 stock_api_obj = StockAPI("1UJ6ACYM0P4MHORZ")
                 stock_analyzer_obj = StockAnalyzer()
-                ai_insights_obj = AIInsights("AIzaSyAVi1v80vt41mTjZED6BaMs5-74HKFkSk0")
+                ai_insights_obj = AIInsights("AIzaSyAVi1v80vt41mTjZED6BaMs5-74HKFkSk0", model_choice)
 
                 market_data = stock_api_obj.get_stock_info(stock, market)
                 df = stock_analyzer_obj.json_to_dataframe(market_data, stock, market)
