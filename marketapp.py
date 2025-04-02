@@ -1,62 +1,112 @@
-import streamlit as st
-from stock_utility_handler import fetch_stock_data, generate_chart
+from stock_utility_handler import StockAPI, StockAnalyzer
 from ai_insights_handler import AIInsights
+
+import streamlit as st
 import os
+import tempfile
 
-# API Keys for different AI models
-GEMINI_API_KEY = "AIzaSyAVi1v80vt41mTjZED6BaMs5-74HKFkSk0"
-OPENAI_API_KEY = "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"
-CLAUDE_API_KEY = "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"
+# Initialize session state variables
+if 'page' not in st.session_state:
+    st.session_state.page = "page1"
+    st.session_state.ticker = "RELIANCE"
+    st.session_state.market = "BSE"
+    st.session_state.image_path = ""
+    st.session_state.ai_insights = ""
+    st.session_state.internal_results_available = False
 
-# Streamlit UI
-st.title("AI-Powered Technical Analysis")
+# Set page configuration for better UI
+st.set_page_config(page_title="📊 Stock Insight AI - Technical Analysis", page_icon="📈", layout="wide")
 
-# User inputs
-stock_symbol = st.text_input("Enter Stock Symbol:", value="AAPL")
-model_choice = st.selectbox("Choose AI Model:", ["Gemini", "OpenAI", "Claude"])
-analyze_button = st.button("Analyze")
+# Page 1: Input Page
+def page1():
+    st.title('Stock Insight AI - Technical Analysis')
 
-# Initialize AI model with the correct API key
-def get_ai_model():
-    if model_choice == "Gemini":
-        return AIInsights(GEMINI_API_KEY, model_choice)
-    elif model_choice == "OpenAI":
-        return AIInsights(OPENAI_API_KEY, model_choice)
-    elif model_choice == "Claude":
-        return AIInsights(CLAUDE_API_KEY, model_choice)
+    col1, col2 = st.columns(2)
+    with col1:
+        st.session_state.ticker = st.text_input("Enter Stock Ticker Symbol", value=st.session_state.ticker, key="ticker_input")
+    with col2:
+        st.session_state.market = st.selectbox("Select Market", ["BSE", "NASDAQ"], index=["BSE", "NASDAQ"].index(st.session_state.market), key="market_input")
 
-if analyze_button:
-    if stock_symbol:
-        st.write(f"Fetching data for {stock_symbol}...")
-        stock_data = fetch_stock_data(stock_symbol)
+    st.sidebar.header("About")
+    st.sidebar.write("""
+        **Stock Insight AI** is an advanced technical analysis tool powered by AI insights and real-time market data.
 
-        if stock_data is not None:
-            chart_path = generate_chart(stock_data, stock_symbol)
-            st.image(chart_path, caption="Stock Price Chart")
+        **What this tool does:**
+        - Fetches real-time stock data from BSE and NASDAQ.
+        - Analyzes stock trends and patterns using AI.
+        - Generates visual charts for technical analysis.
+        - Provides AI-powered insights for better decision-making.
 
-            ai_insights_obj = get_ai_model()
-            analysis = ai_insights_obj.get_analysis(stock_symbol)
-            st.write("### AI Analysis")
-            st.write(analysis)
+        **Steps to perform the search:**
+        1. Enter the stock ticker symbol (e.g., RELIANCE).
+        2. Select the market (BSE or NASDAQ).
+        3. Click "Submit" to initiate the analysis.
 
-            # Provide options for download
-            with open(chart_path, "rb") as file:
-                st.download_button("Download Chart", file, file_name=f"{stock_symbol}_chart.png")
+        📌 **Copyright © 2025 Nakul Arora & Mohit Vaidya**
+    """)
 
-            analysis_text = f"Stock Analysis for {stock_symbol}\n\n{analysis}"
-            st.download_button("Download Analysis", analysis_text, file_name=f"{stock_symbol}_analysis.txt")
+    st.markdown("---")
 
-            # Back button
-            if st.button("Back"):
-                st.experimental_rerun()
-    else:
-        st.error("Please enter a stock symbol.")
+    if st.button('Submit', use_container_width=True):
+        st.session_state.page = "page2"
+        st.session_state.internal_results_available = False
+        st.rerun()
 
+# Page 2: Analysis Page
+def page2():
+    st.title(f"Technical Analysis for {st.session_state.ticker} ({st.session_state.market})")
 
+    stock = st.session_state.ticker
+    market = st.session_state.market
 
-'''
+    if not st.session_state.internal_results_available:
+        with st.spinner('🔍 Analyzing... Please wait...'):
+            temp_dir = tempfile.gettempdir()
+            image_path = os.path.join(temp_dir, f"{market}_{stock}.png")
+            st.session_state.image_path = image_path
 
+            try:
                 stock_api_obj = StockAPI("1UJ6ACYM0P4MHORZ")
                 stock_analyzer_obj = StockAnalyzer()
-                ai_insights_obj = AIInsights("AIzaSyAVi1v80vt41mTjZED6BaMs5-74HKFkSk0", model_choice)
-'''
+                ai_insights_obj = AIInsights("AIzaSyAVi1v80vt41mTjZED6BaMs5-74HKFkSk0")
+
+                market_data = stock_api_obj.get_stock_info(stock, market)
+                df = stock_analyzer_obj.json_to_dataframe(market_data, stock, market)
+
+                # Calculate Fibonacci Levels
+                fib_levels = stock_analyzer_obj.calculate_fibonacci_levels(df)
+                
+                # Plot stock data with Fibonacci levels
+                stock_analyzer_obj.plot_stock_data(df, stock, market, image_path, fib_levels)
+
+                response = ai_insights_obj.get_ai_insights(image_path, stock, market)
+
+                st.session_state.ai_insights = ""
+                for candidate in response.candidates:
+                    for part in candidate.content.parts:
+                        print(part.text)
+                        st.session_state.ai_insights += part.text
+
+                st.session_state.internal_results_available = True
+
+            except Exception as e:
+                st.error(f"❌ An error occurred: {e}")
+                return
+
+    if st.session_state.internal_results_available:
+        st.subheader("📊 Chart Analysis")
+        st.image(st.session_state.image_path, caption=f"{stock} Chart", use_column_width=True)
+
+        st.subheader("🧠 AI Insights")
+        st.write(st.session_state.ai_insights)
+
+        if st.button("🔙 Back", use_container_width=True):
+            st.session_state.page = "page1"
+            st.session_state.internal_results_available = False
+            st.rerun()
+
+# Route between pages
+if st.session_state.page == "page1":
+    page1()
+elif st.session_state.page == "page2":
+    page2()
